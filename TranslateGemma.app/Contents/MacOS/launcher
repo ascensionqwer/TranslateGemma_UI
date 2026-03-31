@@ -38,8 +38,22 @@ if ! curl -s http://localhost:11434/api/tags | grep -q "translategemma"; then
     ollama pull translategemma:27b
 fi
 
+# Start Flask app in background
+python3 "$PROJECT_DIR/app.py" &
+SERVER_PID=$!
+
+# Wait for server to start (max 10 seconds)
+echo "Starting server..."
+for i in {1..10}; do
+    if curl -s http://localhost:5001/api/health > /dev/null 2>&1; then
+        echo "Server is ready!"
+        break
+    fi
+    sleep 1
+done
+
 # Open browser (using port 5001 to avoid macOS AirPlay conflict)
 open "http://localhost:5001"
 
-# Start Flask app
-python3 "$PROJECT_DIR/app.py"
+# Wait for the Flask server to finish
+wait $SERVER_PID
