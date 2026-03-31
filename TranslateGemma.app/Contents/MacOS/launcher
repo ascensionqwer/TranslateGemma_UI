@@ -1,0 +1,45 @@
+#!/bin/bash
+# TranslateGemma Launcher - Standalone macOS App
+
+# Project directory (hardcoded for this installation)
+PROJECT_DIR="/Users/wesleygwn/Documents/Work/Codes/Translator"
+
+# Change to project directory
+cd "$PROJECT_DIR" || {
+    osascript -e 'display dialog "Cannot find project directory at:\n/Users/wesleygwn/Documents/Work/Codes/Translator\n\nPlease ensure the Translator folder exists." buttons {"OK"} default button "OK" with title "TranslateGemma Error" with icon stop'
+    exit 1
+}
+
+# Check if Python 3 is installed
+if ! command -v python3 &> /dev/null; then
+    osascript -e 'display dialog "Python 3 is not installed.\n\nPlease install Python 3 from:\nhttps://www.python.org/downloads/" buttons {"OK"} default button "OK" with title "TranslateGemma Error" with icon stop'
+    exit 1
+fi
+
+# Check if Ollama is running
+if ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
+    osascript -e 'display dialog "Ollama is not running.\n\nPlease start Ollama first:\n1. Open Terminal\n2. Run: ollama serve\n\nOr download Ollama from:\nhttps://ollama.com" buttons {"OK"} default button "OK" with title "TranslateGemma Error" with icon stop'
+    exit 1
+fi
+
+# Check if virtual environment exists, create if not
+if [ ! -d "$PROJECT_DIR/venv" ]; then
+    osascript -e 'display dialog "Setting up TranslateGemma for the first time...\n\nThis may take a moment." buttons {"OK"} default button "OK" with title "TranslateGemma Setup"'
+    python3 -m venv "$PROJECT_DIR/venv"
+fi
+
+# Activate virtual environment and install dependencies
+source "$PROJECT_DIR/venv/bin/activate"
+pip install -q -r "$PROJECT_DIR/requirements.txt" 2>/dev/null
+
+# Check if model is available
+if ! curl -s http://localhost:11434/api/tags | grep -q "translategemma"; then
+    osascript -e 'display dialog "TranslateGemma model not found.\n\nPulling the model now...\nThis may take several minutes." buttons {"OK"} default button "OK" with title "TranslateGemma Setup"'
+    ollama pull translategemma:27b
+fi
+
+# Open browser (using port 5001 to avoid macOS AirPlay conflict)
+open "http://localhost:5001"
+
+# Start Flask app
+python3 "$PROJECT_DIR/app.py"
